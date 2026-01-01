@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<!-- =====================================================
+     لوحة تحكم التاجر - Merchant Dashboard
+     إدارة القطع والطلبات
+     ===================================================== -->
+<html lang="ar" dir="rtl">
+
+<head>
+    <!-- ترميز الأحرف UTF-8 لدعم العربية -->
+    <meta charset="UTF-8">
+
+    <!-- إعدادات العرض للأجهزة المحمولة -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- عنوان الصفحة -->
+    <title>LibyaParts | لوحة تحكم التاجر</title>
+
+    <!-- وصف الصفحة -->
+    <meta name="description" content="لوحة تحكم التاجر - إدارة المخزون وطلبات الزبائن">
+
+    <!-- استيراد Tailwind CSS من CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- استيراد خط Cairo من Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- استيراد أيقونات Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- استيراد Axios للطلبات HTTP -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <!-- =====================================================
+         أنماط CSS المخصصة
+         ===================================================== -->
+    <style>
+        /* تطبيق خط Cairo على كل العناصر */
+        * {
+            font-family: 'Cairo', sans-serif;
+        }
+
+        /* خلفية متدرجة من الأسود الفحمي للأزرق الليلي */
+        body {
+            background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #0f0f23 100%);
+            min-height: 100vh;
+        }
+
+        /* تأثير الزجاج (Glassmorphism) للبطاقات */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* تأثير الحافة المضيئة */
+        .glow-border {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3),
+                0 0 40px rgba(59, 130, 246, 0.1);
+        }
+
+        /* حقول الإدخال المخصصة */
+        .input-field {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* تأثير التركيز على حقول الإدخال */
+        .input-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            outline: none;
+        }
+
+        /* زر متدرج أزرق - أخضر */
+        .btn-gradient {
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            transition: all 0.3s ease;
+        }
+
+        /* تأثير hover على الزر */
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        /* زر WhatsApp */
+        .btn-whatsapp {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-whatsapp:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(37, 211, 102, 0.4);
+        }
+
+        /* زر الحذف */
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+        }
+
+        /* تأثير التحميل الدوار */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* أنماط Toast Notifications */
+        .toast {
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* أزرار التبويبات */
+        .tab-btn {
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+        }
+
+        /* شريط التمرير المخصص */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 4px;
+        }
+
+        /* معاينة الصورة */
+        .image-preview {
+            background: rgba(255, 255, 255, 0.02);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .image-preview:hover {
+            border-color: #3b82f6;
+        }
+
+        /* شارات الحالة */
+        .status-new {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .status-processing {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .status-done {
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- =====================================================
+         حاوية Toast Notifications
+         ===================================================== -->
+    <div id="toast-container" class="fixed top-4 left-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- =====================================================
+         شريط التنقل العلوي - Navbar
+         ===================================================== -->
+    <nav class="glass-card border-b border-white/10 sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <!-- الشعار -->
+                <a href="/dashboard.html" class="flex items-center gap-3">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center">
+                        <i class="fas fa-car text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="text-2xl font-extrabold text-white block">
+                            Libya<span
+                                class="text-transparent bg-clip-text bg-gradient-to-l from-blue-400 to-green-400">Parts</span>
+                        </span>
+                        <span class="text-xs text-gray-400">لوحة تحكم التاجر</span>
+                    </div>
+                </a>
+
+                <!-- معلومات المستخدم -->
+                <div class="flex items-center gap-4">
+                    <!-- اسم التاجر -->
+                    <div class="text-left">
+                        <span class="text-gray-400 text-sm block">مرحباً،</span>
+                        <span class="text-white font-bold" id="merchant-name">التاجر</span>
+                    </div>
+
+                    <!-- زر تسجيل الخروج -->
+                    <button onclick="logout()"
+                        class="glass-card px-4 py-2 rounded-xl text-gray-400 hover:text-red-400 transition-colors flex items-center gap-2">
+                        <i class="fas fa-sign-out-alt"></i>
+                        <span class="hidden sm:inline">خروج</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- =====================================================
+         المحتوى الرئيسي
+         ===================================================== -->
+    <main class="container mx-auto px-4 py-8">
+
+        <!-- =====================================================
+             بطاقات الإحصائيات
+             ===================================================== -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <!-- عدد القطع -->
+            <div class="glass-card glow-border rounded-2xl p-6">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                        <i class="fas fa-cog text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">قطعي المعروضة</p>
+                        <p class="text-3xl font-extrabold text-white" id="stat-parts">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- الطلبات الجديدة -->
+            <div class="glass-card glow-border rounded-2xl p-6">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                        <i class="fas fa-bell text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">طلبات جديدة</p>
+                        <p class="text-3xl font-extrabold text-white" id="stat-new-requests">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- إجمالي الطلبات -->
+            <div class="glass-card glow-border rounded-2xl p-6">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                        <i class="fas fa-inbox text-2xl text-white"></i>
+                    </div>
+                    <div>
+                        <p class="text-gray-400 text-sm">إجمالي الطلبات</p>
+                        <p class="text-3xl font-extrabold text-white" id="stat-total-requests">0</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- =====================================================
+             أزرار التبويبات
+             ===================================================== -->
+        <div class="flex gap-2 mb-6">
+            <!-- تبويب المخزون -->
+            <button onclick="switchTab('inventory')" id="tab-inventory"
+                class="tab-btn active flex-1 sm:flex-none px-6 py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2">
+                <i class="fas fa-boxes"></i>
+                <span>المخزون</span>
+            </button>
+
+            <!-- تبويب الطلبات -->
+            <button onclick="switchTab('requests')" id="tab-requests"
+                class="tab-btn glass-card flex-1 sm:flex-none px-6 py-3 rounded-xl font-bold text-gray-400 flex items-center justify-center gap-2">
+                <i class="fas fa-inbox"></i>
+                <span>الطلبات</span>
+                <span id="requests-badge" class="hidden bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">0</span>
+            </button>
+        </div>
+
+        <!-- =====================================================
+             قسم المخزون - Inventory Section
+             ===================================================== -->
+        <div id="inventory-section">
+            <!-- نموذج إضافة قطعة جديدة -->
+            <div class="glass-card glow-border rounded-2xl p-6 mb-8">
+                <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                    <i class="fas fa-plus-circle text-green-400"></i>
+                    إضافة قطعة جديدة
+                </h2>
+
+                <form id="add-part-form" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- اسم القطعة -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">اسم القطعة *</label>
+                        <input type="text" id="part-name" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="مثال: فلتر زيت أصلي">
+                    </div>
+
+                    <!-- التصنيف -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">التصنيف *</label>
+                        <select id="part-category" required class="input-field w-full px-4 py-3 rounded-xl text-white">
+                            <option value="">اختر التصنيف</option>
+                            <option value="محرك">محرك</option>
+                            <option value="فرامل">فرامل</option>
+                            <option value="كهرباء">كهرباء</option>
+                            <option value="تعليق">تعليق</option>
+                            <option value="جير">جير</option>
+                            <option value="هيكل">هيكل</option>
+                            <option value="إكسسوارات">إكسسوارات</option>
+                            <option value="زيوت وفلاتر">زيوت وفلاتر</option>
+                            <option value="إطارات">إطارات</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
+                    </div>
+
+                    <!-- السعر -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">السعر (د.ل) *</label>
+                        <input type="number" id="part-price" required min="0"
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="مثال: 150">
+                    </div>
+
+                    <!-- ماركة السيارة -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">ماركة السيارة *</label>
+                        <input type="text" id="part-car-make" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="مثال: تويوتا">
+                    </div>
+
+                    <!-- موديل السيارة -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">موديل السيارة *</label>
+                        <input type="text" id="part-car-model" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="مثال: كورولا">
+                    </div>
+
+                    <!-- سنة الصنع -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">سنة الصنع</label>
+                        <input type="text" id="part-car-year"
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="مثال: 2020">
+                    </div>
+
+                    <!-- الوصف -->
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-300 font-semibold mb-2">الوصف</label>
+                        <input type="text" id="part-description"
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="وصف مختصر للقطعة...">
+                    </div>
+
+                    <!-- قطعة مميزة -->
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="part-featured" class="w-5 h-5 rounded">
+                        <label for="part-featured" class="text-gray-300 font-semibold">قطعة مميزة ⭐</label>
+                    </div>
+
+                    <!-- صورة القطعة -->
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <label class="block text-gray-300 font-semibold mb-2">صورة القطعة (حد أقصى 1MB)</label>
+                        <div class="flex gap-4 items-start">
+                            <!-- زر اختيار الصورة -->
+                            <label
+                                class="image-preview w-32 h-32 rounded-xl flex flex-col items-center justify-center cursor-pointer">
+                                <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 mb-2"></i>
+                                <span class="text-gray-400 text-sm">اختر صورة</span>
+                                <input type="file" id="part-image" accept="image/*" class="hidden"
+                                    onchange="previewImage(this)">
+                            </label>
+
+                            <!-- معاينة الصورة -->
+                            <div id="image-preview-container" class="hidden">
+                                <img id="image-preview" class="w-32 h-32 rounded-xl object-cover">
+                                <button type="button" onclick="removeImage()"
+                                    class="text-red-400 text-sm mt-2 hover:text-red-300">
+                                    <i class="fas fa-times ml-1"></i>
+                                    إزالة
+                                </button>
+                            </div>
+                        </div>
+                        <!-- حقل مخفي لتخزين Base64 -->
+                        <input type="hidden" id="part-image-base64">
+                    </div>
+
+                    <!-- زر الإضافة -->
+                    <div class="md:col-span-2 lg:col-span-3">
+                        <button type="submit" id="add-part-btn"
+                            class="btn-gradient px-8 py-3 rounded-xl font-bold text-white flex items-center gap-2">
+                            <i class="fas fa-plus"></i>
+                            <span>إضافة القطعة</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- قائمة القطع -->
+            <div class="glass-card rounded-2xl p-6">
+                <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                    <i class="fas fa-boxes text-blue-400"></i>
+                    مخزوني
+                    <span id="my-parts-count" class="text-gray-400 text-lg font-normal">(0)</span>
+                </h2>
+
+                <!-- حالة التحميل -->
+                <div id="parts-loading" class="text-center py-12">
+                    <div class="spinner mx-auto mb-4" style="width: 40px; height: 40px;"></div>
+                    <p class="text-gray-400">جاري تحميل القطع...</p>
+                </div>
+
+                <!-- حالة الفراغ -->
+                <div id="parts-empty" class="hidden text-center py-12">
+                    <i class="fas fa-box-open text-5xl text-gray-600 mb-4"></i>
+                    <h3 class="text-lg font-bold text-gray-400 mb-2">لا توجد قطع بعد</h3>
+                    <p class="text-gray-500">أضف أول قطعة من النموذج أعلاه</p>
+                </div>
+
+                <!-- شبكة القطع -->
+                <div id="my-parts-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- سيتم إضافة القطع هنا -->
+                </div>
+            </div>
+        </div>
+
+        <!-- =====================================================
+             قسم الطلبات - Requests Section
+             ===================================================== -->
+        <div id="requests-section" class="hidden">
+            <div class="glass-card rounded-2xl p-6">
+                <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
+                    <i class="fas fa-inbox text-green-400"></i>
+                    طلبات الزبائن
+                    <span id="requests-count" class="text-gray-400 text-lg font-normal">(0)</span>
+                </h2>
+
+                <!-- حالة التحميل -->
+                <div id="requests-loading" class="text-center py-12">
+                    <div class="spinner mx-auto mb-4" style="width: 40px; height: 40px;"></div>
+                    <p class="text-gray-400">جاري تحميل الطلبات...</p>
+                </div>
+
+                <!-- حالة الفراغ -->
+                <div id="requests-empty" class="hidden text-center py-12">
+                    <i class="fas fa-inbox text-5xl text-gray-600 mb-4"></i>
+                    <h3 class="text-lg font-bold text-gray-400 mb-2">لا توجد طلبات بعد</h3>
+                    <p class="text-gray-500">ستظهر هنا طلبات الزبائن الجدد</p>
+                </div>
+
+                <!-- قائمة الطلبات -->
+                <div id="requests-list" class="space-y-4">
+                    <!-- سيتم إضافة الطلبات هنا -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- استيراد ملف JavaScript للوحة التحكم -->
+    <script src="admin.js"></script>
+</body>
+
+</html>

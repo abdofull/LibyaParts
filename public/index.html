@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<!-- =====================================================
+     الصفحة الرئيسية للزبائن - Customer Marketplace
+     عرض القطع والبحث وطلب قطع جديدة
+     ===================================================== -->
+<html lang="ar" dir="rtl">
+
+<head>
+    <!-- ترميز الأحرف UTF-8 لدعم العربية -->
+    <meta charset="UTF-8">
+
+    <!-- إعدادات العرض للأجهزة المحمولة -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- عنوان الصفحة -->
+    <title>LibyaParts | قطع غيار السيارات في ليبيا</title>
+
+    <!-- وصف الصفحة لمحركات البحث -->
+    <meta name="description"
+        content="أكبر منصة لقطع غيار السيارات في ليبيا - ابحث عن القطع التي تحتاجها أو اطلبها مباشرة">
+
+    <!-- استيراد Tailwind CSS من CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- استيراد خط Cairo من Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- استيراد أيقونات Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- استيراد Axios للطلبات HTTP -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+
+    <!-- =====================================================
+         أنماط CSS المخصصة
+         ===================================================== -->
+    <style>
+        /* تطبيق خط Cairo على كل العناصر */
+        * {
+            font-family: 'Cairo', sans-serif;
+        }
+
+        /* خلفية متدرجة من الأسود الفحمي للأزرق الليلي */
+        body {
+            background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #0f0f23 100%);
+            min-height: 100vh;
+        }
+
+        /* تأثير الزجاج (Glassmorphism) للبطاقات */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* تأثير الحافة المضيئة */
+        .glow-border {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3),
+                0 0 40px rgba(59, 130, 246, 0.1);
+        }
+
+        /* تأثير الحافة المضيئة الخضراء للقطع المميزة */
+        .glow-green {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4),
+                0 0 40px rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        /* حقول الإدخال المخصصة */
+        .input-field {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* تأثير التركيز على حقول الإدخال */
+        .input-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            outline: none;
+        }
+
+        /* زر متدرج أزرق - أخضر */
+        .btn-gradient {
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            transition: all 0.3s ease;
+        }
+
+        /* تأثير hover على الزر */
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        /* زر WhatsApp */
+        .btn-whatsapp {
+            background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-whatsapp:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(37, 211, 102, 0.4);
+        }
+
+        /* تأثير التحميل الدوار */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* أنماط Toast Notifications */
+        .toast {
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* تأثير حركة للبطاقات */
+        .part-card {
+            transition: all 0.3s ease;
+        }
+
+        .part-card:hover {
+            transform: translateY(-5px);
+        }
+
+        /* شريط التمرير المخصص */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 4px;
+        }
+
+        /* تأثير النبض للأيقونات */
+        .pulse-icon {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* خلفية Hero Section */
+        .hero-bg {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- =====================================================
+         حاوية Toast Notifications
+         ===================================================== -->
+    <div id="toast-container" class="fixed top-4 left-4 z-50 flex flex-col gap-2"></div>
+
+    <!-- =====================================================
+         شريط التنقل العلوي - Navbar
+         ===================================================== -->
+    <nav class="glass-card border-b border-white/10 sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <!-- الشعار -->
+                <a href="/" class="flex items-center gap-3">
+                    <div
+                        class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center">
+                        <i class="fas fa-car text-white text-xl"></i>
+                    </div>
+                    <span class="text-2xl font-extrabold text-white">
+                        Libya<span
+                            class="text-transparent bg-clip-text bg-gradient-to-l from-blue-400 to-green-400">Parts</span>
+                    </span>
+                </a>
+
+                <!-- أزرار التنقل -->
+                <div class="flex items-center gap-4">
+                    <!-- معلومات المستخدم (تظهر عند تسجيل الدخول) -->
+                    <div id="user-info" class="hidden items-center gap-3">
+                        <span class="text-gray-300 font-semibold" id="user-name"></span>
+                        <button onclick="logout()" class="text-gray-400 hover:text-red-400 transition-colors">
+                            <i class="fas fa-sign-out-alt text-xl"></i>
+                        </button>
+                    </div>
+
+                    <!-- زر تسجيل الدخول (يظهر عند عدم تسجيل الدخول) -->
+                    <a href="/auth.html" id="auth-btn"
+                        class="btn-gradient px-6 py-2 rounded-xl font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-user"></i>
+                        <span>دخول</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- =====================================================
+         قسم البطل - Hero Section
+         نموذج طلب قطعة جديدة
+         ===================================================== -->
+    <section class="hero-bg py-16">
+        <div class="container mx-auto px-4">
+            <div class="max-w-4xl mx-auto text-center mb-12">
+                <!-- العنوان الرئيسي -->
+                <h1 class="text-4xl md:text-5xl font-extrabold text-white mb-4">
+                    ابحث عن قطع الغيار التي تحتاجها
+                </h1>
+
+                <!-- الوصف -->
+                <p class="text-xl text-gray-400 mb-8">
+                    أكبر منصة لقطع غيار السيارات في ليبيا - تواصل مباشرة مع التجار
+                </p>
+            </div>
+
+            <!-- نموذج طلب قطعة -->
+            <div class="glass-card glow-border rounded-3xl p-8 max-w-3xl mx-auto">
+                <h2 class="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                    <i class="fas fa-search text-blue-400"></i>
+                    اطلب قطعة غيار
+                </h2>
+
+                <form id="request-form" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- اسم الزبون -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">
+                            <i class="fas fa-user ml-2 text-blue-400"></i>
+                            اسمك
+                        </label>
+                        <input type="text" id="request-name" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="أدخل اسمك">
+                    </div>
+
+                    <!-- رقم الهاتف -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">
+                            <i class="fab fa-whatsapp ml-2 text-green-400"></i>
+                            رقم الهاتف (WhatsApp)
+                        </label>
+                        <input type="tel" id="request-phone" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="0912345678">
+                    </div>
+
+                    <!-- اسم القطعة -->
+                    <div class="md:col-span-2">
+                        <label class="block text-gray-300 font-semibold mb-2">
+                            <i class="fas fa-cog ml-2 text-blue-400"></i>
+                            اسم القطعة المطلوبة
+                        </label>
+                        <input type="text" id="request-part" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="مثال: فلتر زيت، بطارية، إطارات...">
+                    </div>
+
+                    <!-- ماركة السيارة -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">
+                            <i class="fas fa-car ml-2 text-blue-400"></i>
+                            ماركة السيارة
+                        </label>
+                        <input type="text" id="request-make" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="مثال: تويوتا، نيسان، هيونداي...">
+                    </div>
+
+                    <!-- موديل السيارة -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">
+                            <i class="fas fa-car-side ml-2 text-blue-400"></i>
+                            موديل السيارة
+                        </label>
+                        <input type="text" id="request-model" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="مثال: كورولا، صني، أكسنت...">
+                    </div>
+
+                    <!-- سنة الصنع -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">
+                            <i class="fas fa-calendar ml-2 text-blue-400"></i>
+                            سنة الصنع
+                        </label>
+                        <input type="text" id="request-year"
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="مثال: 2020">
+                    </div>
+
+                    <!-- ملاحظات -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">
+                            <i class="fas fa-comment ml-2 text-blue-400"></i>
+                            ملاحظات إضافية
+                        </label>
+                        <input type="text" id="request-notes"
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="أي تفاصيل إضافية...">
+                    </div>
+
+                    <!-- زر الإرسال -->
+                    <div class="md:col-span-2">
+                        <button type="submit" id="request-btn"
+                            class="btn-gradient w-full py-4 rounded-xl font-bold text-white text-lg flex items-center justify-center gap-2">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>إرسال الطلب</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================
+         قسم البحث والفلترة
+         ===================================================== -->
+    <section class="py-8">
+        <div class="container mx-auto px-4">
+            <div class="glass-card rounded-2xl p-6">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <!-- البحث النصي -->
+                    <div class="md:col-span-2">
+                        <div class="relative">
+                            <input type="text" id="search-input"
+                                class="input-field w-full px-4 py-3 pr-12 rounded-xl text-white placeholder-gray-500"
+                                placeholder="ابحث عن قطعة...">
+                            <i class="fas fa-search absolute right-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                        </div>
+                    </div>
+
+                    <!-- فلتر الماركة -->
+                    <div>
+                        <select id="filter-make" class="input-field w-full px-4 py-3 rounded-xl text-white">
+                            <option value="">كل الماركات</option>
+                            <option value="تويوتا">تويوتا</option>
+                            <option value="نيسان">نيسان</option>
+                            <option value="هيونداي">هيونداي</option>
+                            <option value="كيا">كيا</option>
+                            <option value="هوندا">هوندا</option>
+                            <option value="مرسيدس">مرسيدس</option>
+                            <option value="بي ام دبليو">بي ام دبليو</option>
+                            <option value="شيفروليه">شيفروليه</option>
+                            <option value="فورد">فورد</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
+                    </div>
+
+                    <!-- فلتر التصنيف -->
+                    <div>
+                        <select id="filter-category" class="input-field w-full px-4 py-3 rounded-xl text-white">
+                            <option value="">كل التصنيفات</option>
+                            <option value="محرك">محرك</option>
+                            <option value="فرامل">فرامل</option>
+                            <option value="كهرباء">كهرباء</option>
+                            <option value="تعليق">تعليق</option>
+                            <option value="جير">جير</option>
+                            <option value="هيكل">هيكل</option>
+                            <option value="إكسسوارات">إكسسوارات</option>
+                            <option value="زيوت وفلاتر">زيوت وفلاتر</option>
+                            <option value="إطارات">إطارات</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
+                    </div>
+
+                    <!-- زر البحث -->
+                    <div>
+                        <button onclick="searchParts()"
+                            class="btn-gradient w-full py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2">
+                            <i class="fas fa-filter"></i>
+                            <span>تصفية</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================
+         قسم عرض القطع
+         ===================================================== -->
+    <section class="py-8 pb-16">
+        <div class="container mx-auto px-4">
+            <!-- عنوان القسم -->
+            <div class="flex items-center justify-between mb-8">
+                <h2 class="text-2xl font-bold text-white flex items-center gap-3">
+                    <i class="fas fa-th-large text-blue-400"></i>
+                    القطع المتوفرة
+                    <span id="parts-count" class="text-gray-400 text-lg font-normal">(0)</span>
+                </h2>
+            </div>
+
+            <!-- حالة التحميل -->
+            <div id="loading-state" class="text-center py-12">
+                <div class="spinner mx-auto mb-4" style="width: 40px; height: 40px;"></div>
+                <p class="text-gray-400">جاري تحميل القطع...</p>
+            </div>
+
+            <!-- حالة عدم وجود قطع -->
+            <div id="empty-state" class="hidden text-center py-16">
+                <i class="fas fa-box-open text-6xl text-gray-600 mb-4"></i>
+                <h3 class="text-xl font-bold text-gray-400 mb-2">لا توجد قطع متوفرة حالياً</h3>
+                <p class="text-gray-500">جرب تغيير معايير البحث أو أرسل طلبك وسنبحث لك</p>
+            </div>
+
+            <!-- شبكة القطع -->
+            <div id="parts-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- سيتم إضافة القطع هنا ديناميكياً -->
+            </div>
+        </div>
+    </section>
+
+    <!-- =====================================================
+         الفوتر
+         ===================================================== -->
+    <footer class="glass-card border-t border-white/10 py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <!-- حقوق النشر -->
+                <p class="text-gray-400">
+                    © 2026 LibyaParts - جميع الحقوق محفوظة
+                </p>
+
+                <!-- روابط سريعة -->
+                <div class="flex items-center gap-6">
+                    <a href="/auth.html" class="text-gray-400 hover:text-white transition-colors">
+                        دخول التجار
+                    </a>
+                    <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                        عن المنصة
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- استيراد ملف JavaScript للصفحة الرئيسية -->
+    <script src="app.js"></script>
+</body>
+
+</html>

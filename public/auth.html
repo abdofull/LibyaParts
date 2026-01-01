@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<!-- =====================================================
+     صفحة المصادقة - Authentication Page
+     تسجيل الدخول وإنشاء حساب جديد
+     ===================================================== -->
+<html lang="ar" dir="rtl">
+<head>
+    <!-- ترميز الأحرف UTF-8 لدعم العربية -->
+    <meta charset="UTF-8">
+    
+    <!-- إعدادات العرض للأجهزة المحمولة -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- عنوان الصفحة -->
+    <title>LibyaParts | تسجيل الدخول</title>
+    
+    <!-- وصف الصفحة لمحركات البحث -->
+    <meta name="description" content="سجل دخولك أو أنشئ حساب جديد في منصة قطع الغيار الليبية">
+    
+    <!-- استيراد Tailwind CSS من CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- استيراد خط Cairo من Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- استيراد أيقونات Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- استيراد Axios للطلبات HTTP -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    
+    <!-- =====================================================
+         أنماط CSS المخصصة
+         ===================================================== -->
+    <style>
+        /* تطبيق خط Cairo على كل العناصر */
+        * {
+            font-family: 'Cairo', sans-serif;
+        }
+        
+        /* خلفية متدرجة من الأسود الفحمي للأزرق الليلي */
+        body {
+            background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #0f0f23 100%);
+            min-height: 100vh;
+        }
+        
+        /* تأثير الزجاج (Glassmorphism) للبطاقات */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* تأثير الحافة المضيئة */
+        .glow-border {
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3),
+                        0 0 40px rgba(59, 130, 246, 0.1);
+        }
+        
+        /* حقول الإدخال المخصصة */
+        .input-field {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        /* تأثير التركيز على حقول الإدخال */
+        .input-field:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+            outline: none;
+        }
+        
+        /* زر متدرج أزرق - أخضر */
+        .btn-gradient {
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            transition: all 0.3s ease;
+        }
+        
+        /* تأثير hover على الزر */
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(59, 130, 246, 0.4);
+        }
+        
+        /* تأثير التحميل الدوار */
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid #fff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* أنماط Toast Notifications */
+        .toast {
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        /* أزرار اختيار نوع المستخدم */
+        .role-btn {
+            transition: all 0.3s ease;
+        }
+        
+        .role-btn.active {
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            border-color: transparent;
+        }
+        
+        .role-btn:not(.active):hover {
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center p-4">
+    
+    <!-- =====================================================
+         حاوية Toast Notifications
+         ===================================================== -->
+    <div id="toast-container" class="fixed top-4 left-4 z-50 flex flex-col gap-2"></div>
+    
+    <!-- =====================================================
+         البطاقة الرئيسية للمصادقة
+         ===================================================== -->
+    <div class="w-full max-w-md">
+        
+        <!-- =====================================================
+             الشعار والعنوان
+             ===================================================== -->
+        <div class="text-center mb-8">
+            <!-- أيقونة السيارة -->
+            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full glass-card glow-border mb-4">
+                <i class="fas fa-car text-4xl text-blue-400"></i>
+            </div>
+            
+            <!-- اسم المنصة -->
+            <h1 class="text-3xl font-extrabold text-white mb-2">
+                Libya<span class="text-transparent bg-clip-text bg-gradient-to-l from-blue-400 to-green-400">Parts</span>
+            </h1>
+            
+            <!-- وصف المنصة -->
+            <p class="text-gray-400">منصة قطع الغيار الليبية</p>
+        </div>
+        
+        <!-- =====================================================
+             بطاقة النموذج
+             ===================================================== -->
+        <div class="glass-card glow-border rounded-3xl p-8">
+            
+            <!-- =====================================================
+                 أزرار التبديل بين الدخول والتسجيل
+                 ===================================================== -->
+            <div class="flex gap-2 mb-6 p-1 glass-card rounded-2xl">
+                <!-- زر تسجيل الدخول -->
+                <button id="login-tab" onclick="switchTab('login')" 
+                    class="flex-1 py-3 px-4 rounded-xl font-bold text-white transition-all bg-gradient-to-l from-blue-500 to-green-500">
+                    دخول
+                </button>
+                
+                <!-- زر إنشاء حساب -->
+                <button id="register-tab" onclick="switchTab('register')" 
+                    class="flex-1 py-3 px-4 rounded-xl font-bold text-gray-400 transition-all hover:text-white">
+                    حساب جديد
+                </button>
+            </div>
+            
+            <!-- =====================================================
+                 نموذج تسجيل الدخول
+                 ===================================================== -->
+            <form id="login-form" class="space-y-5">
+                <!-- حقل البريد الإلكتروني -->
+                <div>
+                    <label class="block text-gray-300 font-semibold mb-2">
+                        <i class="fas fa-envelope ml-2 text-blue-400"></i>
+                        البريد الإلكتروني
+                    </label>
+                    <input type="email" id="login-email" required
+                        class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                        placeholder="example@email.com">
+                </div>
+                
+                <!-- حقل كلمة المرور -->
+                <div>
+                    <label class="block text-gray-300 font-semibold mb-2">
+                        <i class="fas fa-lock ml-2 text-blue-400"></i>
+                        كلمة المرور
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="login-password" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="••••••••">
+                        <!-- زر إظهار/إخفاء كلمة المرور -->
+                        <button type="button" onclick="togglePassword('login-password')" 
+                            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- زر تسجيل الدخول -->
+                <button type="submit" id="login-btn"
+                    class="btn-gradient w-full py-4 rounded-xl font-bold text-white text-lg flex items-center justify-center gap-2">
+                    <span>تسجيل الدخول</span>
+                    <i class="fas fa-arrow-left"></i>
+                </button>
+            </form>
+            
+            <!-- =====================================================
+                 نموذج إنشاء حساب جديد
+                 ===================================================== -->
+            <form id="register-form" class="space-y-5 hidden">
+                <!-- حقل الاسم الكامل -->
+                <div>
+                    <label class="block text-gray-300 font-semibold mb-2">
+                        <i class="fas fa-user ml-2 text-green-400"></i>
+                        الاسم الكامل
+                    </label>
+                    <input type="text" id="register-name" required
+                        class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                        placeholder="أدخل اسمك الكامل">
+                </div>
+                
+                <!-- حقل البريد الإلكتروني -->
+                <div>
+                    <label class="block text-gray-300 font-semibold mb-2">
+                        <i class="fas fa-envelope ml-2 text-green-400"></i>
+                        البريد الإلكتروني
+                    </label>
+                    <input type="email" id="register-email" required
+                        class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                        placeholder="example@email.com">
+                </div>
+                
+                <!-- حقل رقم الهاتف -->
+                <div>
+                    <label class="block text-gray-300 font-semibold mb-2">
+                        <i class="fab fa-whatsapp ml-2 text-green-400"></i>
+                        رقم الهاتف (WhatsApp)
+                    </label>
+                    <input type="tel" id="register-phone" required
+                        class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                        placeholder="0912345678">
+                </div>
+                
+                <!-- حقل كلمة المرور -->
+                <div>
+                    <label class="block text-gray-300 font-semibold mb-2">
+                        <i class="fas fa-lock ml-2 text-green-400"></i>
+                        كلمة المرور
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="register-password" required minlength="6"
+                            class="input-field w-full px-4 py-3 rounded-xl text-white placeholder-gray-500"
+                            placeholder="6 أحرف على الأقل">
+                        <button type="button" onclick="togglePassword('register-password')" 
+                            class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- اختيار نوع الحساب -->
+                <div>
+                    <label class="block text-gray-300 font-semibold mb-3">
+                        <i class="fas fa-users ml-2 text-green-400"></i>
+                        نوع الحساب
+                    </label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <!-- زر اختيار زبون -->
+                        <button type="button" onclick="selectRole('زبون')" id="role-customer"
+                            class="role-btn active glass-card py-4 rounded-xl border border-white/10 flex flex-col items-center gap-2">
+                            <i class="fas fa-shopping-cart text-2xl text-white"></i>
+                            <span class="font-bold text-white">زبون</span>
+                            <span class="text-xs text-gray-400">أبحث عن قطع غيار</span>
+                        </button>
+                        
+                        <!-- زر اختيار تاجر -->
+                        <button type="button" onclick="selectRole('تاجر')" id="role-merchant"
+                            class="role-btn glass-card py-4 rounded-xl border border-white/10 flex flex-col items-center gap-2">
+                            <i class="fas fa-store text-2xl text-gray-400"></i>
+                            <span class="font-bold text-gray-400">تاجر</span>
+                            <span class="text-xs text-gray-500">أبيع قطع غيار</span>
+                        </button>
+                    </div>
+                    <!-- حقل مخفي لتخزين الدور المختار -->
+                    <input type="hidden" id="register-role" value="زبون">
+                </div>
+                
+                <!-- زر إنشاء الحساب -->
+                <button type="submit" id="register-btn"
+                    class="btn-gradient w-full py-4 rounded-xl font-bold text-white text-lg flex items-center justify-center gap-2">
+                    <span>إنشاء الحساب</span>
+                    <i class="fas fa-user-plus"></i>
+                </button>
+            </form>
+        </div>
+        
+        <!-- =====================================================
+             رابط العودة للصفحة الرئيسية
+             ===================================================== -->
+        <div class="text-center mt-6">
+            <a href="/" class="text-gray-400 hover:text-white transition-colors">
+                <i class="fas fa-home ml-2"></i>
+                العودة للصفحة الرئيسية
+            </a>
+        </div>
+    </div>
+    
+    <!-- استيراد ملف JavaScript للمصادقة -->
+    <script src="auth.js"></script>
+</body>
+</html>
