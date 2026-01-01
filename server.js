@@ -150,6 +150,29 @@ const merchantOnly = (req, res, next) => {
 };
 
 // =====================================================
+// بريد المدير الوحيد - Admin Email
+// هذا البريد فقط يمكنه الوصول للوحة المدير
+// يمكن تغييره من ملف .env
+// =====================================================
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'abdo@gmail.com';
+
+// =====================================================
+// Middleware للتحقق من صلاحية المدير
+// يستخدم بعد authMiddleware للتأكد أن المستخدم هو المدير
+// =====================================================
+const adminOnly = (req, res, next) => {
+    // التحقق من أن البريد هو بريد المدير
+    if (req.user.email !== ADMIN_EMAIL) {
+        return res.status(403).json({
+            success: false,
+            message: 'هذه الصفحة متاحة للمدير فقط'
+        });
+    }
+    // الانتقال للخطوة التالية
+    next();
+};
+
+// =====================================================
 // مسارات المصادقة - Authentication Routes
 // =====================================================
 
@@ -176,13 +199,24 @@ app.post('/api/auth/register', async (req, res) => {
             });
         }
 
+        // تحديد إذا كان المستخدم هو المدير
+        const isAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+        // تحديد حالة الموافقة
+        // الزبائن والمدير موافق عليهم تلقائياً
+        // التجار الجدد يحتاجون موافقة المدير
+        const userRole = role || 'زبون';
+        const isApproved = userRole === 'زبون' || isAdmin;
+
         // إنشاء مستخدم جديد
         const user = new User({
             name,
             email,
             password,
             phone,
-            role: role || 'زبون' // القيمة الافتراضية هي زبون
+            role: userRole,
+            isApproved,
+            isAdmin
         });
 
         // حفظ المستخدم في قاعدة البيانات
@@ -195,17 +229,24 @@ app.post('/api/auth/register', async (req, res) => {
             { expiresIn: '7d' } // صلاحية الرمز: 7 أيام
         );
 
+        // رسالة مختلفة للتجار غير الموافق عليهم
+        const message = isApproved
+            ? 'تم إنشاء الحساب بنجاح'
+            : 'تم إنشاء الحساب بنجاح. يرجى انتظار موافقة المدير';
+
         // إرجاع الاستجابة الناجحة
         res.status(201).json({
             success: true,
-            message: 'تم إنشاء الحساب بنجاح',
+            message,
             token,
             user: {
                 id: user._id,
                 name: user.name,
                 email: user.email,
                 phone: user.phone,
-                role: user.role
+                role: user.role,
+                isApproved: user.isApproved,
+                isAdmin: user.isAdmin
             }
         });
     } catch (error) {
@@ -252,6 +293,15 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
+        // التحقق من الموافقة على التاجر (إلا إذا كان مديراً)
+        if (user.role === 'تاجر' && !user.isApproved && !user.isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: 'حسابك في انتظار موافقة المدير',
+                pendingApproval: true
+            });
+        }
+
         // إنشاء رمز JWT
         const token = jwt.sign(
             { userId: user._id },
@@ -269,7 +319,9 @@ app.post('/api/auth/login', async (req, res) => {
                 name: user.name,
                 email: user.email,
                 phone: user.phone,
-                role: user.role
+                role: user.role,
+                isApproved: user.isApproved,
+                isAdmin: user.isAdmin
             }
         });
     } catch (error) {
@@ -292,7 +344,9 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
                 name: req.user.name,
                 email: req.user.email,
                 phone: req.user.phone,
-                role: req.user.role
+                role: req.user.role,
+                isApproved: req.user.isApproved,
+                isAdmin: req.user.isAdmin
             }
         });
     } catch (error) {
@@ -646,6 +700,189 @@ app.get('/api/stats', authMiddleware, merchantOnly, async (req, res) => {
 });
 
 // =====================================================
+// مسار حذف جميع الطلبات (للتجار فقط)
+// =====================================================
+app.delete('/api/requests/all', authMiddleware, merchantOnly, async (req, res) => {
+    try {
+        // حذف جميع الطلبات
+        await Request.deleteMany({});
+
+        res.json({
+            success: true,
+            message: 'تم حذف جميع الطلبات بنجاح'
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ في حذف الطلبات'
+        });
+    }
+});
+
+// =====================================================
+// مسارات لوحة المدير - Admin Routes
+// =====================================================
+
+// ----- جلب جميع المستخدمين (للمدير فقط) -----
+app.get('/api/admin/users', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        // جلب جميع المستخدمين عدا المدير نفسه
+        const users = await User.find({ email: { $ne: ADMIN_EMAIL } })
+            .sort({ createdAt: -1 })
+            .select('-password');
+
+        res.json({
+            success: true,
+            count: users.length,
+            users
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ في جلب المستخدمين'
+        });
+    }
+});
+
+// ----- الموافقة على تاجر (للمدير فقط) -----
+app.put('/api/admin/users/:id/approve', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { isApproved: true },
+            { new: true }
+        ).select('-password');
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'المستخدم غير موجود'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: `تمت الموافقة على ${user.name} بنجاح`,
+            user
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ في الموافقة على المستخدم'
+        });
+    }
+});
+
+// ----- إلغاء الموافقة على تاجر (للمدير فقط) -----
+app.put('/api/admin/users/:id/reject', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            { isApproved: false },
+            { new: true }
+        ).select('-password');
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'المستخدم غير موجود'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: `تم إلغاء موافقة ${user.name}`,
+            user
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ في إلغاء الموافقة'
+        });
+    }
+});
+
+// ----- حذف مستخدم (للمدير فقط) -----
+app.delete('/api/admin/users/:id', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'المستخدم غير موجود'
+            });
+        }
+
+        // حذف قطع التاجر إذا كان تاجراً
+        if (user.role === 'تاجر') {
+            await Part.deleteMany({ merchantId: user._id });
+        }
+
+        // حذف المستخدم
+        await User.findByIdAndDelete(req.params.id);
+
+        res.json({
+            success: true,
+            message: `تم حذف ${user.name} بنجاح`
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ في حذف المستخدم'
+        });
+    }
+});
+
+// ----- إحصائيات لوحة المدير (للمدير فقط) -----
+app.get('/api/admin/stats', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        // عدد جميع المستخدمين
+        const totalUsers = await User.countDocuments({ email: { $ne: ADMIN_EMAIL } });
+
+        // عدد التجار
+        const totalMerchants = await User.countDocuments({ role: 'تاجر' });
+
+        // عدد التجار في انتظار الموافقة
+        const pendingMerchants = await User.countDocuments({ role: 'تاجر', isApproved: false });
+
+        // عدد التجار الموافق عليهم
+        const approvedMerchants = await User.countDocuments({ role: 'تاجر', isApproved: true });
+
+        // عدد الزبائن
+        const totalCustomers = await User.countDocuments({ role: 'زبون' });
+
+        // عدد جميع القطع
+        const totalParts = await Part.countDocuments();
+
+        // عدد جميع الطلبات
+        const totalRequests = await Request.countDocuments();
+
+        // عدد الطلبات الجديدة
+        const newRequests = await Request.countDocuments({ status: 'جديد' });
+
+        res.json({
+            success: true,
+            stats: {
+                totalUsers,
+                totalMerchants,
+                pendingMerchants,
+                approvedMerchants,
+                totalCustomers,
+                totalParts,
+                totalRequests,
+                newRequests
+            }
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'حدث خطأ في جلب الإحصائيات'
+        });
+    }
+});
+
+// =====================================================
 // توجيه الصفحات الثابتة
 // =====================================================
 
@@ -662,6 +899,16 @@ app.get('/auth', (req, res) => {
 // لوحة تحكم التاجر
 app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// لوحة تحكم المدير
+app.get('/superadmin', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'superadmin.html'));
+});
+
+// صفحة انتظار الموافقة
+app.get('/pending', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'pending.html'));
 });
 
 // =====================================================

@@ -65,12 +65,22 @@ async function checkMerchantAccess() {
 // دالة تسجيل الخروج
 // =====================================================
 function logout() {
-    // حذف بيانات المستخدم من التخزين المحلي
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-
-    // توجيه لصفحة تسجيل الدخول
-    window.location.href = '/auth.html';
+    Swal.fire({
+        title: 'تسجيل الخروج',
+        text: "هل تريد تسجيل الخروج؟",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'نعم، خروج',
+        cancelButtonText: 'إلغاء'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/auth.html';
+        }
+    });
 }
 
 // =====================================================
@@ -173,10 +183,16 @@ function renderMyParts(parts) {
                 <p class="text-gray-400 text-sm mb-2">${part.carMake} ${part.carModel}</p>
                 <div class="flex items-center justify-between">
                     <span class="text-green-400 font-bold">${part.price.toLocaleString()} د.ل</span>
-                    <button onclick="deletePart('${part._id}')" 
-                        class="text-red-400 hover:text-red-300 transition-colors">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick='openEditModal(${JSON.stringify(part).replace(/'/g, "\\'")})' 
+                            class="text-blue-400 hover:text-blue-300 transition-colors">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button onclick="deletePart('${part._id}')" 
+                            class="text-red-400 hover:text-red-300 transition-colors">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
@@ -349,23 +365,139 @@ async function updateRequestStatus(requestId, status) {
 // دالة حذف قطعة
 // =====================================================
 async function deletePart(partId) {
-    // تأكيد الحذف
-    if (!confirm('هل أنت متأكد من حذف هذه القطعة؟')) {
-        return;
+    const result = await Swal.fire({
+        title: 'حذف القطعة',
+        text: "هل أنت متأكد من حذف هذه القطعة؟ لن تتمكن من استعادتها!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'نعم، احذفها',
+        cancelButtonText: 'إلغاء'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            await axios.delete(`${API_URL}/api/parts/${partId}`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+
+            Swal.fire(
+                'تم الحذف!',
+                'تم حذف القطعة بنجاح.',
+                'success'
+            );
+            loadMyParts();
+            loadStats();
+        } catch (error) {
+            showToast('حدث خطأ في حذف القطعة', 'error');
+        }
     }
+}
+
+// =====================================================
+// دالة حذف جميع الطلبات
+// =====================================================
+async function deleteAllRequests() {
+    const result = await Swal.fire({
+        title: 'حذف جميع الطلبات',
+        text: "هل أنت متأكد تماماً؟ سيتم حذف سجل جميع الطلبات ولن تتمكن من استعادته!",
+        icon: 'error',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'نعم، احذف الكل',
+        cancelButtonText: 'تراجع'
+    });
+
+    if (result.isConfirmed) {
+        try {
+            await axios.delete(`${API_URL}/api/requests/all`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+
+            Swal.fire(
+                'تم التنظيف!',
+                'تم حذف جميع الطلبات بنجاح.',
+                'success'
+            );
+            loadRequests();
+            loadStats();
+        } catch (error) {
+            showToast('حدث خطأ في حذف الطلبات', 'error');
+        }
+    }
+}
+
+// =====================================================
+// دالة فتح نافذة التعديل
+// =====================================================
+function openEditModal(part) {
+    // تعبئة النموذج ببيانات القطعة
+    document.getElementById('edit-part-id').value = part._id;
+    document.getElementById('edit-part-name').value = part.name;
+    document.getElementById('edit-part-category').value = part.category;
+    document.getElementById('edit-part-price').value = part.price;
+    document.getElementById('edit-part-car-make').value = part.carMake;
+    document.getElementById('edit-part-car-model').value = part.carModel;
+    document.getElementById('edit-part-car-year').value = part.carYear || '';
+    document.getElementById('edit-part-featured').checked = part.isFeatured;
+
+    // إظهار النافذة
+    document.getElementById('edit-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+// =====================================================
+// دالة إغلاق نافذة التعديل
+// =====================================================
+function closeEditModal() {
+    document.getElementById('edit-modal').classList.add('hidden');
+    document.body.style.overflow = 'auto';
+}
+
+// =====================================================
+// معالج نموذج تعديل القطعة
+// =====================================================
+document.getElementById('edit-part-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const btn = document.getElementById('edit-part-btn');
+    setLoading(btn, true);
+
+    const partId = document.getElementById('edit-part-id').value;
+    const name = document.getElementById('edit-part-name').value;
+    const category = document.getElementById('edit-part-category').value;
+    const price = document.getElementById('edit-part-price').value;
+    const carMake = document.getElementById('edit-part-car-make').value;
+    const carModel = document.getElementById('edit-part-car-model').value;
+    const carYear = document.getElementById('edit-part-car-year').value;
+    const isFeatured = document.getElementById('edit-part-featured').checked;
 
     try {
-        await axios.delete(`${API_URL}/api/parts/${partId}`, {
+        const response = await axios.put(`${API_URL}/api/parts/${partId}`, {
+            name,
+            category,
+            price: Number(price),
+            carMake,
+            carModel,
+            carYear,
+            isFeatured
+        }, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
 
-        showToast('تم حذف القطعة بنجاح', 'success');
-        loadMyParts();
-        loadStats();
+        if (response.data.success) {
+            showToast('تم تعديل القطعة بنجاح', 'success');
+            closeEditModal();
+            loadMyParts();
+        }
     } catch (error) {
-        showToast('حدث خطأ في حذف القطعة', 'error');
+        showToast('حدث خطأ في تعديل القطعة', 'error');
+    } finally {
+        setLoading(btn, false);
     }
-}
+});
 
 // =====================================================
 // دالة التبديل بين التبويبات

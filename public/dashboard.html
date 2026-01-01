@@ -32,6 +32,9 @@
     <!-- استيراد Axios للطلبات HTTP -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
+    <!-- استيراد SweetAlert2 للتنبيهات -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <!-- =====================================================
          أنماط CSS المخصصة
          ===================================================== -->
@@ -469,11 +472,20 @@
              ===================================================== -->
         <div id="requests-section" class="hidden">
             <div class="glass-card rounded-2xl p-6">
-                <h2 class="text-xl font-bold text-white mb-6 flex items-center gap-3">
-                    <i class="fas fa-inbox text-green-400"></i>
-                    طلبات الزبائن
-                    <span id="requests-count" class="text-gray-400 text-lg font-normal">(0)</span>
-                </h2>
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white flex items-center gap-3">
+                        <i class="fas fa-inbox text-green-400"></i>
+                        طلبات الزبائن
+                        <span id="requests-count" class="text-gray-400 text-lg font-normal">(0)</span>
+                    </h2>
+
+                    <!-- زر حذف جميع الطلبات -->
+                    <button onclick="deleteAllRequests()"
+                        class="btn-danger px-4 py-2 rounded-xl font-bold text-white flex items-center gap-2">
+                        <i class="fas fa-trash-alt"></i>
+                        <span class="hidden sm:inline">حذف الكل</span>
+                    </button>
+                </div>
 
                 <!-- حالة التحميل -->
                 <div id="requests-loading" class="text-center py-12">
@@ -495,6 +507,109 @@
             </div>
         </div>
     </main>
+
+    <!-- =====================================================
+         نافذة تعديل القطعة - Edit Part Modal
+         ===================================================== -->
+    <div id="edit-modal" class="fixed inset-0 z-50 hidden">
+        <!-- خلفية معتمة -->
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="closeEditModal()"></div>
+
+        <!-- محتوى النافذة -->
+        <div class="relative min-h-screen flex items-center justify-center p-4">
+            <div class="glass-card glow-border rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <!-- العنوان -->
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-white flex items-center gap-3">
+                        <i class="fas fa-edit text-blue-400"></i>
+                        تعديل القطعة
+                    </h2>
+                    <button onclick="closeEditModal()" class="text-gray-400 hover:text-white">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+
+                <!-- نموذج التعديل -->
+                <form id="edit-part-form" class="space-y-4">
+                    <input type="hidden" id="edit-part-id">
+
+                    <!-- اسم القطعة -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">اسم القطعة *</label>
+                        <input type="text" id="edit-part-name" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white">
+                    </div>
+
+                    <!-- التصنيف -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">التصنيف *</label>
+                        <select id="edit-part-category" required
+                            class="input-field w-full px-4 py-3 rounded-xl text-white">
+                            <option value="محرك">محرك</option>
+                            <option value="فرامل">فرامل</option>
+                            <option value="كهرباء">كهرباء</option>
+                            <option value="تعليق">تعليق</option>
+                            <option value="جير">جير</option>
+                            <option value="هيكل">هيكل</option>
+                            <option value="إكسسوارات">إكسسوارات</option>
+                            <option value="زيوت وفلاتر">زيوت وفلاتر</option>
+                            <option value="إطارات">إطارات</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
+                    </div>
+
+                    <!-- السعر -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">السعر (د.ل) *</label>
+                        <input type="number" id="edit-part-price" required min="0"
+                            class="input-field w-full px-4 py-3 rounded-xl text-white">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- ماركة السيارة -->
+                        <div>
+                            <label class="block text-gray-300 font-semibold mb-2">ماركة السيارة *</label>
+                            <input type="text" id="edit-part-car-make" required
+                                class="input-field w-full px-4 py-3 rounded-xl text-white">
+                        </div>
+
+                        <!-- موديل السيارة -->
+                        <div>
+                            <label class="block text-gray-300 font-semibold mb-2">موديل السيارة *</label>
+                            <input type="text" id="edit-part-car-model" required
+                                class="input-field w-full px-4 py-3 rounded-xl text-white">
+                        </div>
+                    </div>
+
+                    <!-- سنة الصنع -->
+                    <div>
+                        <label class="block text-gray-300 font-semibold mb-2">سنة الصنع</label>
+                        <input type="text" id="edit-part-car-year"
+                            class="input-field w-full px-4 py-3 rounded-xl text-white">
+                    </div>
+
+                    <!-- قطعة مميزة -->
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="edit-part-featured" class="w-5 h-5 rounded">
+                        <label for="edit-part-featured" class="text-gray-300 font-semibold">قطعة مميزة ⭐</label>
+                    </div>
+
+                    <!-- أزرار -->
+                    <div class="flex gap-3 pt-4">
+                        <button type="submit" id="edit-part-btn"
+                            class="btn-gradient flex-1 py-3 rounded-xl font-bold text-white flex items-center justify-center gap-2">
+                            <i class="fas fa-save"></i>
+                            حفظ التعديلات
+                        </button>
+                        <button type="button" onclick="closeEditModal()"
+                            class="glass-card px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white">
+                            إلغاء
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <!-- استيراد ملف JavaScript للوحة التحكم -->
     <script src="admin.js"></script>

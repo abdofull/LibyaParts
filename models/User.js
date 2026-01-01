@@ -55,6 +55,19 @@ const userSchema = new mongoose.Schema({
         default: 'زبون' // القيمة الافتراضية هي زبون
     },
 
+    // هل تمت الموافقة على حساب التاجر؟
+    // الزبائن موافق عليهم تلقائياً، التجار يحتاجون موافقة المدير
+    isApproved: {
+        type: Boolean, // نوع البيانات: منطقي
+        default: true // القيمة الافتراضية: موافق عليه (سيتم تغييرها للتجار)
+    },
+
+    // هل المستخدم مدير الموقع؟
+    isAdmin: {
+        type: Boolean, // نوع البيانات: منطقي
+        default: false // القيمة الافتراضية: ليس مديراً
+    },
+
     // تاريخ إنشاء الحساب
     createdAt: {
         type: Date, // نوع البيانات: تاريخ
@@ -66,7 +79,7 @@ const userSchema = new mongoose.Schema({
 // Middleware: تشفير كلمة المرور قبل الحفظ
 // يتم تنفيذ هذا الكود تلقائياً قبل حفظ المستخدم
 // =====================================================
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
     // التحقق إذا تم تعديل كلمة المرور
     // إذا لم يتم تعديلها، ننتقل للخطوة التالية
     if (!this.isModified('password')) {
@@ -87,7 +100,7 @@ userSchema.pre('save', async function(next) {
 // Method: مقارنة كلمة المرور المدخلة مع المخزنة
 // تستخدم عند تسجيل الدخول للتحقق من صحة كلمة المرور
 // =====================================================
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
     // مقارنة كلمة المرور المدخلة مع المشفرة
     // ترجع true إذا تطابقت، false إذا لم تتطابق
     return await bcrypt.compare(candidatePassword, this.password);

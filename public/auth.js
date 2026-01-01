@@ -44,9 +44,9 @@ async function checkAuthStatus() {
             }
         });
 
-        // إذا نجح الطلب، توجيه المستخدم حسب دوره
+        // إذا نجح الطلب، توجيه المستخدم حسب صلاحياته
         if (response.data.success) {
-            redirectUser(response.data.user.role);
+            redirectUser(response.data.user);
         }
     } catch (error) {
         // إذا فشل الطلب، حذف الرمز القديم
@@ -56,17 +56,27 @@ async function checkAuthStatus() {
 }
 
 // =====================================================
-// دالة توجيه المستخدم حسب دوره
-// التاجر -> لوحة التحكم | الزبون -> الصفحة الرئيسية
+// دالة توجيه المستخدم حسب دوره وصلاحياته
+// المدير -> لوحة المدير | التاجر -> لوحة التحكم | الزبون -> الصفحة الرئيسية
 // =====================================================
-function redirectUser(role) {
+function redirectUser(user) {
     // التأخير قليلاً لإظهار رسالة النجاح
     setTimeout(() => {
-        if (role === 'تاجر') {
-            // التاجر يذهب للوحة التحكم
-            window.location.href = '/dashboard.html';
-        } else {
-            // الزبون يذهب للصفحة الرئيسية
+        // إذا كان المستخدم هو المدير
+        if (user.isAdmin) {
+            window.location.href = '/superadmin.html';
+        }
+        // إذا كان تاجر
+        else if (user.role === 'تاجر') {
+            // التحقق من الموافقة
+            if (user.isApproved) {
+                window.location.href = '/dashboard.html';
+            } else {
+                window.location.href = '/pending.html';
+            }
+        }
+        // الزبون يذهب للصفحة الرئيسية
+        else {
             window.location.href = '/index.html';
         }
     }, 1000);
@@ -264,8 +274,8 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             // إظهار رسالة نجاح
             showToast('تم تسجيل الدخول بنجاح!', 'success');
 
-            // توجيه المستخدم حسب دوره
-            redirectUser(response.data.user.role);
+            // توجيه المستخدم حسب صلاحياته
+            redirectUser(response.data.user);
         }
     } catch (error) {
         // إظهار رسالة الخطأ
@@ -314,8 +324,8 @@ document.getElementById('register-form').addEventListener('submit', async (e) =>
             // إظهار رسالة نجاح
             showToast('تم إنشاء الحساب بنجاح!', 'success');
 
-            // توجيه المستخدم حسب دوره
-            redirectUser(response.data.user.role);
+            // توجيه المستخدم حسب صلاحياته
+            redirectUser(response.data.user);
         }
     } catch (error) {
         // إظهار رسالة الخطأ

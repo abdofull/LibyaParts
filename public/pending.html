@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<!-- =====================================================
+     صفحة انتظار الموافقة - Pending Approval Page
+     للتجار الذين ينتظرون موافقة المدير
+     ===================================================== -->
+<html lang="ar" dir="rtl">
+
+<head>
+    <!-- ترميز الأحرف UTF-8 لدعم العربية -->
+    <meta charset="UTF-8">
+
+    <!-- إعدادات العرض للأجهزة المحمولة -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- عنوان الصفحة -->
+    <title>LibyaParts | في انتظار الموافقة</title>
+
+    <!-- استيراد Tailwind CSS من CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- استيراد خط Cairo من Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- استيراد أيقونات Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- =====================================================
+         أنماط CSS المخصصة
+         ===================================================== -->
+    <style>
+        /* تطبيق خط Cairo على كل العناصر */
+        * {
+            font-family: 'Cairo', sans-serif;
+        }
+
+        /* خلفية متدرجة */
+        body {
+            background: linear-gradient(135deg, #121212 0%, #1a1a2e 50%, #0f0f23 100%);
+            min-height: 100vh;
+        }
+
+        /* تأثير الزجاج (Glassmorphism) للبطاقات */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* تأثير الحافة المضيئة البرتقالية */
+        .glow-orange {
+            box-shadow: 0 0 30px rgba(245, 158, 11, 0.3),
+                0 0 60px rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* أيقونة الساعة المتحركة */
+        .hourglass {
+            animation: flip 2s ease-in-out infinite;
+        }
+
+        @keyframes flip {
+
+            0%,
+            100% {
+                transform: rotate(0deg);
+            }
+
+            50% {
+                transform: rotate(180deg);
+            }
+        }
+
+        /* نقاط التحميل المتحركة */
+        .loading-dots span {
+            animation: blink 1.4s infinite both;
+        }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes blink {
+
+            0%,
+            80%,
+            100% {
+                opacity: 0;
+            }
+
+            40% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center p-4">
+
+    <!-- =====================================================
+         بطاقة انتظار الموافقة
+         ===================================================== -->
+    <div class="text-center max-w-lg">
+        <!-- الشعار -->
+        <div class="mb-8">
+            <div class="inline-flex items-center justify-center w-24 h-24 rounded-2xl glass-card glow-orange mb-4">
+                <i class="fas fa-hourglass-half text-5xl text-orange-400 hourglass"></i>
+            </div>
+
+            <h1 class="text-3xl font-extrabold text-white mb-2">
+                Libya<span
+                    class="text-transparent bg-clip-text bg-gradient-to-l from-blue-400 to-green-400">Parts</span>
+            </h1>
+        </div>
+
+        <!-- رسالة الانتظار -->
+        <div class="glass-card glow-orange rounded-3xl p-8">
+            <h2 class="text-2xl font-bold text-white mb-4">
+                حسابك في انتظار الموافقة
+            </h2>
+
+            <p class="text-gray-400 mb-6 leading-relaxed">
+                شكراً لتسجيلك كتاجر في منصة LibyaParts!
+                <br><br>
+                يقوم مدير الموقع حالياً بمراجعة طلبك.
+                <br>
+                ستتمكن من الدخول للوحة التحكم فور الموافقة على حسابك.
+            </p>
+
+            <!-- حالة الانتظار -->
+            <div class="flex items-center justify-center gap-2 text-orange-400 font-bold mb-6">
+                <span>جاري المراجعة</span>
+                <span class="loading-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                </span>
+            </div>
+
+            <!-- أزرار الإجراءات -->
+            <div class="flex flex-col gap-3">
+                <button onclick="checkStatus()"
+                    class="w-full py-3 rounded-xl font-bold text-white bg-gradient-to-l from-orange-500 to-amber-500 hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
+                    <i class="fas fa-sync-alt"></i>
+                    تحقق من الحالة
+                </button>
+
+                <button onclick="logout()"
+                    class="w-full py-3 rounded-xl font-bold text-gray-400 glass-card hover:text-white transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-sign-out-alt"></i>
+                    تسجيل الخروج
+                </button>
+            </div>
+        </div>
+
+        <!-- معلومات التواصل -->
+        <p class="text-gray-500 text-sm mt-6">
+            لأي استفسار، تواصل معنا عبر البريد الإلكتروني
+        </p>
+    </div>
+
+    <!-- =====================================================
+         JavaScript
+         ===================================================== -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // التحقق من حالة الموافقة
+        async function checkStatus() {
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                window.location.href = '/auth.html';
+                return;
+            }
+
+            try {
+                const response = await axios.get('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.data.success) {
+                    const user = response.data.user;
+
+                    // تحديث البيانات في التخزين المحلي
+                    localStorage.setItem('user', JSON.stringify(user));
+
+                    if (user.isApproved) {
+                        // تم الموافقة! توجيه للوحة التحكم
+                        alert('🎉 تهانينا! تم الموافقة على حسابك. سيتم توجيهك للوحة التحكم.');
+                        window.location.href = '/dashboard.html';
+                    } else {
+                        alert('⏳ لا يزال حسابك في انتظار الموافقة. يرجى المحاولة لاحقاً.');
+                    }
+                }
+            } catch (error) {
+                alert('حدث خطأ. يرجى المحاولة لاحقاً.');
+            }
+        }
+
+        // تسجيل الخروج
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/auth.html';
+        }
+
+        // التحقق التلقائي عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+            // إذا كان موافق عليه، توجيهه للوحة التحكم
+            if (user.isApproved) {
+                window.location.href = '/dashboard.html';
+            }
+        });
+    </script>
+</body>
+
+</html>
